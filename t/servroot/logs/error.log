@@ -1,0 +1,8 @@
+2012/04/09 15:56:14 [notice] 15078#0: using the "epoll" event method
+2012/04/09 15:56:14 [notice] 15078#0: ngx_openresty/1.0.11.28
+2012/04/09 15:56:14 [notice] 15078#0: built by gcc 4.6.1 (Ubuntu/Linaro 4.6.1-9ubuntu3) 
+2012/04/09 15:56:14 [notice] 15078#0: OS: Linux 3.0.0-16-generic
+2012/04/09 15:56:14 [notice] 15078#0: getrlimit(RLIMIT_NOFILE): 1024:4096
+2012/04/09 15:56:14 [notice] 15079#0: signal 3 (SIGQUIT) received, shutting down
+2012/04/09 15:56:14 [info] 15079#0: epoll_wait() failed (4: Interrupted system call)
+2012/04/09 15:56:14 [notice] 15079#0: exit
