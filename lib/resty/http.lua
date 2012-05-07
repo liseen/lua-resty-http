@@ -225,7 +225,14 @@ function request(self, reqt)
         return nil, err
     end
 
-    -- TODO send body
+	-- send body
+	if nreqt.body then
+	    bytes, err = sock:send(body)
+		if not bytes then
+			sock:close()
+			return "send body failed", err	
+		end
+	end
 
     -- receive status line
     code, status = receivestatusline(sock)
@@ -264,6 +271,62 @@ function request(self, reqt)
     end
 
     return 1, code, headers, status, body
+end
+
+function proxy_pass(self, reqt)
+    local code, headers, status, body, bytes, ok, err
+
+    local nreqt = adjustrequest(reqt)
+
+    local sock = tcp()
+    if not sock then
+        return nil, "create sock failed"
+    end
+
+    sock:settimeout(nreqt.timeout)
+
+    -- connect
+    ok, err = sock:connect(nreqt.host, nreqt.port)
+    if not ok then
+        return nil, "sock connected failed " .. err
+    end
+	
+	-- send request line and headers
+    local reqline = string.format("%s %s HTTP/1.0\r\n", nreqt.method or "GET", nreqt.uri)
+
+    local h = "\r\n"
+    for i, v in pairs(nreqt.headers) do
+        h = i .. ": " .. v .. "\r\n" .. h
+    end
+    bytes, err = sock:send(reqline .. h)
+    if not bytes then
+        sock:close()
+        return "send headers failed", err
+    end
+	
+	-- Send body
+	if nreqt.body then
+	    bytes, err = sock:send(body)
+		if not bytes then
+			sock:close()
+			return "send body failed", err	
+		end
+	end
+	
+    while true do
+		local data, err, partial = sock:receive(nreqt.chunk_size or 1024)
+        if not err then
+            nreqt.callback(data)
+        elseif err == "closed" then
+            if partial then
+				nreqt.callback(partial)		
+			end
+			return 1,nil
+        else
+            return nil, err
+        end
+    end
+	return 1,nil
 end
 
 
