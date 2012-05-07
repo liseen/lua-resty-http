@@ -230,7 +230,7 @@ function request(self, reqt)
 	    bytes, err = sock:send(body)
 		if not bytes then
 			sock:close()
-			return "send body failed", err	
+			return nil, "send body failed" .. err	
 		end
 	end
 
@@ -301,7 +301,7 @@ function proxy_pass(self, reqt)
     bytes, err = sock:send(reqline .. h)
     if not bytes then
         sock:close()
-        return "send headers failed", err
+        return nil, "send headers failed" .. err
     end
 	
 	-- Send body
@@ -309,7 +309,7 @@ function proxy_pass(self, reqt)
 	    bytes, err = sock:send(body)
 		if not bytes then
 			sock:close()
-			return "send body failed", err	
+			return nil,"send body failed" .. err	
 		end
 	end
 	
