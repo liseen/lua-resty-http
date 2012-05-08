@@ -93,6 +93,10 @@ local function adjustrequest(reqt)
 
     nreqt.fetch_size = reqt.fetch_size or 16*1024 -- 16k
     nreqt.max_body_size = reqt.max_body_size or 1024*1024*1024 -- 1024mb
+    
+    if reqt.keepalive then
+        nreqt.headers['connection'] = 'keep-alive'
+    end
 
     return nreqt
 end
@@ -165,7 +169,8 @@ local function receivebody(sock, headers, nreqt)
     local body = ''
     local callback = nreqt.body_callback
     if not callback then
-        local function bc(data)
+        local function bc(data, chunked_header)
+            if chunked_header then return end
             body = body .. data
         end
     end
@@ -175,6 +180,7 @@ local function receivebody(sock, headers, nreqt)
             local chunk_header = sock:receiveuntil("\r\n")
             local data, err, partial = chunk_header()
             if not err then
+                callback(data, 1) -- proxy_pass need this too
                 if data == "0" then
                     return body -- end of chunk
                 else
@@ -319,8 +325,12 @@ function request(self, reqt)
             return nil, "read body failed " .. err
         end
     end
-
-    sock:setkeepalive(65)
+    
+    if nreqt.keepalive then
+        sock:setkeepalive(nreqt.keepalive)
+    else 
+        sock:close()
+    end
 
     return 1, code, headers, status, body
 end
@@ -344,8 +354,11 @@ function proxy_pass(self, reqt)
     end
 
     if not nreqt.body_callback then
-        nreqt.body_callback = function (data)
+        nreqt.body_callback = function (data, chunked_header)
             ngx.print(data)
+            if chunked_header then
+                ngx.print('\r\n')
+            end
         end
     end
     return request(self, nreqt)
