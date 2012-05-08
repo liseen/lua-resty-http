@@ -90,6 +90,9 @@ local function adjustrequest(reqt)
     nreqt.headers = adjustheaders(nreqt)
 
     nreqt.timeout = reqt.timeout or TIMEOUT * 1000;
+    
+    nreqt.fetch_size = reqt.fetch_size or 16*1024 -- 16k
+    nreqt.max_body_size = reqt.max_body_size or 1024*1024*1024 -- 1024mb
 
     return nreqt
 end
@@ -142,60 +145,70 @@ local function receivebody(sock, headers, nreqt)
     local body = ''
     local callback = nreqt.body_callback
     if not callback then
-        local function bc(event_type, data)
-            if 'body' == event_type then
-                body = body .. data
-            end
+        local function bc(data)
+            body = body .. data
         end
     end
     if t and t ~= "identity" then
         -- chunked
-            while true do
-                local chunk_header = sock:receiveuntil("\r\n")
-                local data, err, partial = chunk_header()
-                if not err then
-                    if data == "0\r\n" then
-                        return body
-                    else
-                        local data, err, partial = sock:receive(string.sub(data, 1, len(data) - 1))
-                        if not err then
-                            callback(data)
-                        elseif err == "closed" then
-                            callback(partial)
-                            return body
-                        else
-                            return nil, err
-                        end
+        while true do
+            local chunk_header = sock:receiveuntil("\r\n")
+            local data, err, partial = chunk_header()
+            if not err then
+                if data == "0" then
+                    return body -- end of chunk
+                else
+                    local length = tonumber(data, 16)
+                    
+                    -- TODO check nreqt.max_body_size !!
+                    
+                    local ok, err = read_body_data(sock,length, nreqt.fetch_size, callback)
+                    if err then
+                        return nil,err
                     end
                 end
             end
+        end
     elseif headers["content-length"] ~= nil then
         -- content length
         local length = tonumber(headers["content-length"])
-        local data, err, partial = sock:receive(length)
+        if length > nreqt.max_body_size then
+            ngx.log(ngx.INFO, 'content-length > nreqt.max_body_size !! Tail it !')
+            length = nreqt.max_body_size
+        end
+        
+        local ok, err = read_body_data(sock,length, nreqt.fetch_size, callback)
+        if not ok then
+            return nil,err
+        end
+    else
+        -- connection close
+        local ok, err = read_body_data(sock,nreqt.max_body_size, nreqt.fetch_size, callback)
+        if not ok then
+            return nil,err
+        end
+    end
+    return body
+end
+
+local function read_body_data(sock, size, fetch_size, callback)
+    local p_size = fetch_size
+    while size > 0 do
+        if size < p_size then
+            p_size = size
+        end
+        local data, err, partial = sock:receive(p_size)
         if not err then
             callback(data)
         elseif err == "closed" then
             callback(partial)
-            return body
+            return 1 -- 'closed'
         else
             return nil, err
         end
-    else
-        -- connection close
-        local body = ''
-        while true do
-            local data, err, partial = sock:receive(nreqt.fetch_size or 16*1024)
-            if not err then
-                callback(data)
-            elseif err == "closed" then
-                callback(partial)
-                return body
-            else
-                return nil, err
-            end
-        end
+        size = size - p_size
     end
+    return 1
 end
 
 
@@ -318,6 +331,7 @@ end
 function proxy_pass(self, reqt)
     local nreqt = {}
     for i,v in pairs(reqt) do nreqt[i] = v end
+    
     if not nreqt.code_callback then
         nreqt.code_callback = function(code) 
             ngx.status = code
