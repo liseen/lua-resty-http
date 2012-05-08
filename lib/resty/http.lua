@@ -311,6 +311,31 @@ function request(self, reqt)
     return 1, code, headers, status, body
 end
 
+function proxy_pass(self, reqt)
+    local nreqt = {}
+    for i,v in pairs(reqt) do nreqt[i] = v end
+    if not nreqt.code_callback then
+        nreqt.code_callback = function(code) 
+            ngx.status = code
+        end
+    end
+    
+    if not nreqt.header_callback then
+        nreqt.header_callback = function (headers)
+            for i, v in pairs(headers) do
+                ngx.header[i] = v
+            end
+        end
+    end
+    
+    if not nreqt.body_callback then
+        nreqt.body_callback = function (data)
+            ngx.print(data)
+        end
+    end
+    return request(self, nreqt)
+end
+
 -- to prevent use of casual module global variables
 getmetatable(resty.http).__newindex = function (table, key, val)
     error('attempt to write to undeclared variable "' .. key .. '": '
