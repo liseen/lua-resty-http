@@ -140,6 +140,26 @@ local function receiveheaders(sock, headers)
     return headers
 end
 
+local function read_body_data(sock, size, fetch_size, callback)
+    local p_size = fetch_size
+    while size > 0 do
+        if size < p_size then
+            p_size = size
+        end
+        local data, err, partial = sock:receive(p_size)
+        if not err then
+            callback(data)
+        elseif err == "closed" then
+            callback(partial)
+            return 1 -- 'closed'
+        else
+            return nil, err
+        end
+        size = size - p_size
+    end
+    return 1
+end
+
 local function receivebody(sock, headers, nreqt)
     local t = headers["transfer-encoding"] -- shortcut
     local body = ''
@@ -190,27 +210,6 @@ local function receivebody(sock, headers, nreqt)
     end
     return body
 end
-
-local function read_body_data(sock, size, fetch_size, callback)
-    local p_size = fetch_size
-    while size > 0 do
-        if size < p_size then
-            p_size = size
-        end
-        local data, err, partial = sock:receive(p_size)
-        if not err then
-            callback(data)
-        elseif err == "closed" then
-            callback(partial)
-            return 1 -- 'closed'
-        else
-            return nil, err
-        end
-        size = size - p_size
-    end
-    return 1
-end
-
 
 local function shouldredirect(reqt, code, headers)
     return headers.location and
