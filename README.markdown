@@ -59,7 +59,9 @@ Author
 ======
 
 "liseen" <liseen.wan@gmail.com>
-"Zhang "agentzh" Yichun (章亦春) <agentzh@gmail.com>
+
+Zhang "agentzh" Yichun (章亦春) <agentzh@gmail.com>
+
 "wendal" <wendal1985@gmail.com>
 
 Copyright and License
