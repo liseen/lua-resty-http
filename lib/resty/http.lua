@@ -52,7 +52,7 @@ local function adjustheaders(reqt)
     }
     -- if we have authentication information, pass it along
     if reqt.user and reqt.password then
-        lower["authorization"] = 
+        lower["authorization"] =
             "Basic " ..  (mime.b64(reqt.user .. ":" .. reqt.password))
     end
     -- override with user headers
@@ -90,7 +90,7 @@ local function adjustrequest(reqt)
     nreqt.headers = adjustheaders(nreqt)
 
     nreqt.timeout = reqt.timeout or TIMEOUT * 1000;
-    
+
     nreqt.fetch_size = reqt.fetch_size or 16*1024 -- 16k
     nreqt.max_body_size = reqt.max_body_size or 1024*1024*1024 -- 1024mb
 
@@ -179,9 +179,9 @@ local function receivebody(sock, headers, nreqt)
                     return body -- end of chunk
                 else
                     local length = tonumber(data, 16)
-                    
+
                     -- TODO check nreqt.max_body_size !!
-                    
+
                     local ok, err = read_body_data(sock,length, nreqt.fetch_size, callback)
                     if err then
                         return nil,err
@@ -196,7 +196,7 @@ local function receivebody(sock, headers, nreqt)
             ngx.log(ngx.INFO, 'content-length > nreqt.max_body_size !! Tail it !')
             length = nreqt.max_body_size
         end
-        
+
         local ok, err = read_body_data(sock,length, nreqt.fetch_size, callback)
         if not ok then
             return nil,err
@@ -265,14 +265,14 @@ function request(self, reqt)
         return nil, err
     end
 
-	-- send body
-	if nreqt.body then
-	    bytes, err = sock:send(body)
-		if err then
-			sock:close()
-			return nil, "send body failed" .. err	
-		end
-	end
+    -- send body
+    if nreqt.body then
+        bytes, err = sock:send(body)
+        if err then
+            sock:close()
+            return nil, "send body failed" .. err
+        end
+    end
 
     -- receive status line
     code, status = receivestatusline(sock)
@@ -290,7 +290,7 @@ function request(self, reqt)
         headers, err = receiveheaders(sock, {})
         code, status = receivestatusline(sock)
     end
-    
+
     -- notify code_callback
     if nreqt.code_callback then
         nreqt.code_callback(code)
@@ -307,7 +307,7 @@ function request(self, reqt)
     if nreqt.header_callback then
         nreqt.header_callback(headers)
     end
-    
+
     -- TODO rediret check
 
     -- receive body
@@ -330,13 +330,13 @@ end
 function proxy_pass(self, reqt)
     local nreqt = {}
     for i,v in pairs(reqt) do nreqt[i] = v end
-    
+
     if not nreqt.code_callback then
-        nreqt.code_callback = function(code) 
+        nreqt.code_callback = function(code)
             ngx.status = code
         end
     end
-    
+
     if not nreqt.header_callback then
         nreqt.header_callback = function (headers)
             for i, v in pairs(headers) do
@@ -344,7 +344,7 @@ function proxy_pass(self, reqt)
             end
         end
     end
-    
+
     if not nreqt.body_callback then
         nreqt.body_callback = function (data)
             ngx.print(data)
