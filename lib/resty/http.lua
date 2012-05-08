@@ -274,7 +274,6 @@ function request(self, reqt)
         end
     end
     
-    sock:setkeepalive(65)
 
     -- receive status line
     code, status = receivestatusline(sock)
@@ -321,10 +320,7 @@ function request(self, reqt)
         end
     end
 
-    ok, err = sock:close()
-    if not ok and err ~= 'closed' then
-        return nil, "close sock failed " .. err -- if not ok, err must NOT nil
-    end
+    sock:setkeepalive(65)
 
     return 1, code, headers, status, body
 end
