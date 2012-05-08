@@ -253,7 +253,7 @@ function request(self, reqt)
     end
 
     -- send request line and headers
-    local reqline = string.format("%s %s HTTP/1.0\r\n", nreqt.method or "GET", nreqt.uri)
+    local reqline = string.format("%s %s HTTP/1.1\r\n", nreqt.method or "GET", nreqt.uri)
 
     local h = "\r\n"
     for i, v in pairs(nreqt.headers) do
@@ -273,6 +273,8 @@ function request(self, reqt)
             return nil, "send body failed" .. err
         end
     end
+    
+    sock:setkeepalive(65)
 
     -- receive status line
     code, status = receivestatusline(sock)
