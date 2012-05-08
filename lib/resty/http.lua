@@ -236,7 +236,7 @@ function request(self, reqt)
 
     -- connect
     ok, err = sock:connect(nreqt.host, nreqt.port)
-    if not ok then
+    if err then
         return nil, "sock connected failed " .. err
     end
 
@@ -248,7 +248,7 @@ function request(self, reqt)
         h = i .. ": " .. v .. "\r\n" .. h
     end
     bytes, err = sock:send(reqline .. h)
-    if not bytes then
+    if err then
         sock:close()
         return nil, err
     end
@@ -256,7 +256,7 @@ function request(self, reqt)
 	-- send body
 	if nreqt.body then
 	    bytes, err = sock:send(body)
-		if not bytes then
+		if err then
 			sock:close()
 			return nil, "send body failed" .. err	
 		end
@@ -266,7 +266,11 @@ function request(self, reqt)
     code, status = receivestatusline(sock)
     if not code then
         sock:close()
-        return nil, "read status line failed " .. status
+        if not status then
+            return nil, "read status line failed "
+        else
+            return nil, "read status line failed " .. status
+        end
     end
 
     -- ignore any 100-continue messages
@@ -282,7 +286,7 @@ function request(self, reqt)
 
     -- receive headers
     headers, err = receiveheaders(sock, {})
-    if not headers then
+    if err then
         sock:close()
         return nil, "read headers failed " .. err
     end
@@ -297,7 +301,7 @@ function request(self, reqt)
     -- receive body
     if shouldreceivebody(nreqt, code) then
         body, err = receivebody(sock, headers, nreqt)
-        if not body then
+        if err then
             sock:close()
             return nil, "read body failed " .. err
         end
@@ -305,7 +309,7 @@ function request(self, reqt)
 
     ok, err = sock:close()
     if not ok and err ~= 'closed' then
-        return nil, "close sock failed " .. err
+        return nil, "close sock failed " .. err -- if not ok, err must NOT nil
     end
 
     return 1, code, headers, status, body
