@@ -169,7 +169,7 @@ local function receivebody(sock, headers, nreqt)
     local body = ''
     local callback = nreqt.body_callback
     if not callback then
-        local function bc(data, chunked_header)
+        local function bc(data, chunked_header, ...)
             if chunked_header then return end
             body = body .. data
         end
