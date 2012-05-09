@@ -340,13 +340,13 @@ function proxy_pass(self, reqt)
     for i,v in pairs(reqt) do nreqt[i] = v end
 
     if not nreqt.code_callback then
-        nreqt.code_callback = function(code)
+        nreqt.code_callback = function(code, ...)
             ngx.status = code
         end
     end
 
     if not nreqt.header_callback then
-        nreqt.header_callback = function (headers)
+        nreqt.header_callback = function (headers, ...)
             for i, v in pairs(headers) do
                 ngx.header[i] = v
             end
@@ -354,7 +354,7 @@ function proxy_pass(self, reqt)
     end
 
     if not nreqt.body_callback then
-        nreqt.body_callback = function (data, chunked_header)
+        nreqt.body_callback = function (data, chunked_header, ...)
             ngx.print(data)
             if chunked_header then
                 ngx.print('\r\n')
