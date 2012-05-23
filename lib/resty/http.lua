@@ -152,9 +152,13 @@ local function read_body_data(sock, size, fetch_size, callback)
         end
         local data, err, partial = sock:receive(p_size)
         if not err then
-            callback(data)
+            if data then
+                callback(data)
+            end
         elseif err == "closed" then
-            callback(partial)
+            if partial then
+                callback(partial)
+            end
             return 1 -- 'closed'
         else
             return nil, err
@@ -180,7 +184,6 @@ local function receivebody(sock, headers, nreqt)
             local chunk_header = sock:receiveuntil("\r\n")
             local data, err, partial = chunk_header()
             if not err then
-                callback(data, 1) -- proxy_pass need this too
                 if data == "0" then
                     return body -- end of chunk
                 else
@@ -354,11 +357,8 @@ function proxy_pass(self, reqt)
     end
 
     if not nreqt.body_callback then
-        nreqt.body_callback = function (data, chunked_header, ...)
-            ngx.print(data)
-            if chunked_header then
-                ngx.print('\r\n')
-            end
+        nreqt.body_callback = function (data, ...)
+            ngx.print(data) -- Will auto package as chunked format!!
         end
     end
     return request(self, nreqt)
