@@ -146,7 +146,7 @@ end
 
 local function read_body_data(sock, size, fetch_size, callback)
     local p_size = fetch_size
-    while size > 0 do
+    while size and size > 0 do
         if size < p_size then
             p_size = size
         end
