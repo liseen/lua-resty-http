@@ -1,6 +1,6 @@
 module("resty.http", package.seeall)
 
-_VERSION = '0.01'
+_VERSION = '0.2'
 
 -- constants
 -- connection timeout in seconds
@@ -52,7 +52,7 @@ local function adjustheaders(reqt)
     }
     -- if we have authentication information, pass it along
     if reqt.user and reqt.password then
-        lower["authorization"] = 
+        lower["authorization"] =
             "Basic " ..  (mime.b64(reqt.user .. ":" .. reqt.password))
     end
     -- override with user headers
@@ -90,6 +90,13 @@ local function adjustrequest(reqt)
     nreqt.headers = adjustheaders(nreqt)
 
     nreqt.timeout = reqt.timeout or TIMEOUT * 1000;
+
+    nreqt.fetch_size = reqt.fetch_size or 16*1024 -- 16k
+    nreqt.max_body_size = reqt.max_body_size or 1024*1024*1024 -- 1024mb
+    
+    if reqt.keepalive then
+        nreqt.headers['connection'] = 'keep-alive'
+    end
 
     return nreqt
 end
@@ -137,39 +144,81 @@ local function receiveheaders(sock, headers)
     return headers
 end
 
-
--- TODO receive chunked body
-local function receive_chunked_body(sock)
-    return nil, "http-chunked not supported"
+local function read_body_data(sock, size, fetch_size, callback)
+    local p_size = fetch_size
+    while size and size > 0 do
+        if size < p_size then
+            p_size = size
+        end
+        local data, err, partial = sock:receive(p_size)
+        if not err then
+            if data then
+                callback(data)
+            end
+        elseif err == "closed" then
+            if partial then
+                callback(partial)
+            end
+            return 1 -- 'closed'
+        else
+            return nil, err
+        end
+        size = size - p_size
+    end
+    return 1
 end
 
-
-local function receivebody(sock, headers)
+local function receivebody(sock, headers, nreqt)
     local t = headers["transfer-encoding"] -- shortcut
+    local body = ''
+    local callback = nreqt.body_callback
+    if not callback then
+        local function bc(data, chunked_header, ...)
+            if chunked_header then return end
+            body = body .. data
+        end
+    end
     if t and t ~= "identity" then
         -- chunked
-        return receivechunkedbody(sock)
+        while true do
+            local chunk_header = sock:receiveuntil("\r\n")
+            local data, err, partial = chunk_header()
+            if not err then
+                if data == "0" then
+                    return body -- end of chunk
+                else
+                    local length = tonumber(data, 16)
+
+                    -- TODO check nreqt.max_body_size !!
+
+                    local ok, err = read_body_data(sock,length, nreqt.fetch_size, callback)
+                    if err then
+                        return nil,err
+                    end
+                end
+            end
+        end
     elseif headers["content-length"] ~= nil then
         -- content length
         local length = tonumber(headers["content-length"])
-        return sock:receive(length);
+        if length > nreqt.max_body_size then
+            ngx.log(ngx.INFO, 'content-length > nreqt.max_body_size !! Tail it !')
+            length = nreqt.max_body_size
+        end
+
+        local ok, err = read_body_data(sock,length, nreqt.fetch_size, callback)
+        if not ok then
+            return nil,err
+        end
     else
         -- connection close
-        local body = ''
-        while true do
-            local data, err, partial = sock:receive(16*1024)
-            if not err then
-                body = body .. data
-            elseif err == "closed" then
-                body = body .. partial
-                return body
-            else
-                return nil, err
-            end
+        local ok, err = read_body_data(sock,nreqt.max_body_size, nreqt.fetch_size, callback)
+        if not ok then
+            return nil,err
         end
     end
+    return body
 end
-
 
 local function shouldredirect(reqt, code, headers)
     return headers.location and
@@ -208,30 +257,42 @@ function request(self, reqt)
 
     -- connect
     ok, err = sock:connect(nreqt.host, nreqt.port)
-    if not ok then
+    if err then
         return nil, "sock connected failed " .. err
     end
 
     -- send request line and headers
-    local reqline = string.format("%s %s HTTP/1.0\r\n", nreqt.method or "GET", nreqt.uri)
+    local reqline = string.format("%s %s HTTP/1.1\r\n", nreqt.method or "GET", nreqt.uri)
 
     local h = "\r\n"
     for i, v in pairs(nreqt.headers) do
         h = i .. ": " .. v .. "\r\n" .. h
     end
     bytes, err = sock:send(reqline .. h)
-    if not bytes then
+    if err then
         sock:close()
         return nil, err
     end
 
-    -- TODO send body
+    -- send body
+    if nreqt.body then
+        bytes, err = sock:send(body)
+        if err then
+            sock:close()
+            return nil, "send body failed" .. err
+        end
+    end
+    
 
     -- receive status line
     code, status = receivestatusline(sock)
     if not code then
         sock:close()
-        return nil, "read status line failed " .. status
+        if not status then
+            return nil, "read status line failed "
+        else
+            return nil, "read status line failed " .. status
+        end
     end
 
     -- ignore any 100-continue messages
@@ -240,32 +301,68 @@ function request(self, reqt)
         code, status = receivestatusline(sock)
     end
 
+    -- notify code_callback
+    if nreqt.code_callback then
+        nreqt.code_callback(code)
+    end
+
     -- receive headers
     headers, err = receiveheaders(sock, {})
-    if not headers then
+    if err then
         sock:close()
         return nil, "read headers failed " .. err
+    end
+
+    -- notify header_callback
+    if nreqt.header_callback then
+        nreqt.header_callback(headers)
     end
 
     -- TODO rediret check
 
     -- receive body
     if shouldreceivebody(nreqt, code) then
-        body, err = receivebody(sock, headers)
-        if not body then
+        body, err = receivebody(sock, headers, nreqt)
+        if err then
             sock:close()
             return nil, "read body failed " .. err
         end
     end
-
-    ok, err = sock:close()
-    if not ok and err ~= 'closed' then
-        return nil, "close sock failed " .. err
+    
+    if nreqt.keepalive then
+        sock:setkeepalive(nreqt.keepalive)
+    else 
+        sock:close()
     end
 
     return 1, code, headers, status, body
 end
 
+function proxy_pass(self, reqt)
+    local nreqt = {}
+    for i,v in pairs(reqt) do nreqt[i] = v end
+
+    if not nreqt.code_callback then
+        nreqt.code_callback = function(code, ...)
+            ngx.status = code
+        end
+    end
+
+    if not nreqt.header_callback then
+        nreqt.header_callback = function (headers, ...)
+            for i, v in pairs(headers) do
+                ngx.header[i] = v
+            end
+        end
+    end
+
+    if not nreqt.body_callback then
+        nreqt.body_callback = function (data, ...)
+            ngx.print(data) -- Will auto package as chunked format!!
+        end
+    end
+    return request(self, nreqt)
+end
 
 -- to prevent use of casual module global variables
 getmetatable(resty.http).__newindex = function (table, key, val)
