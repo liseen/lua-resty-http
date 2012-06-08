@@ -37,7 +37,10 @@ Synopsis
                     url = "http://www.qunar.com/",
                     --- proxy = "http://127.0.0.1:8888",
                     --- timeout = 3000,
-                    --- headers = { UserAgent = "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/535.11 (KHTML, like Gecko) Chrome/17.0.963.56 Safari/535.11"}
+                    method = "POST", -- POST or GET
+                    -- add post content-type and cookie
+                    headers = { Cookie = "ABCDEFG", ["Content-Type"] = "application/x-www-form-urlencoded" },
+                    body = "uid=1234567890",
                 }
 
                 ngx.say(ok)
@@ -50,7 +53,6 @@ Synopsis
 TODO
 ====
 
-* implement the POST method
 * implement the redirect supported
 * implement the chunked
 * implement the keepalive
@@ -63,6 +65,8 @@ Author
 Zhang "agentzh" Yichun (章亦春) <agentzh@gmail.com>
 
 "wendal" <wendal1985@gmail.com>
+
+"wangchll" <wangchong1985@gmail.com>
 
 Copyright and License
 =====================
