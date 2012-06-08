@@ -261,24 +261,54 @@ function request(self, reqt)
         return nil, "sock connected failed " .. err
     end
 
+    -- check type of req_body, maybe string, file, function
+    local req_body = nreqt.body
+    local req_body_type = nil
+    if req_body then
+        req_body_type = type(req_body)
+        if req_body_type == 'string' then -- fixed Content-Length
+            nreqt.headers['Content-Length'] = req_body
+        end
+    end
+    
     -- send request line and headers
     local reqline = string.format("%s %s HTTP/1.1\r\n", nreqt.method or "GET", nreqt.uri)
-
     local h = "\r\n"
     for i, v in pairs(nreqt.headers) do
         h = i .. ": " .. v .. "\r\n" .. h
     end
     
-    -- add post body
-    if nreqt.method == 'POST' and nreqt.body then
-        h = "Content-Length: " .. #nreqt.body .. "\r\n" .. h
-        h = h .. nreqt.body
-    end
+    h = h .. '\r\n' -- close headers
     
     bytes, err = sock:send(reqline .. h)
     if err then
         sock:close()
         return nil, err
+    end
+    
+    -- send req_body, if exists
+    if req_body_type == 'string' then
+        bytes, err = sock:send(req_body)
+        if err then
+            sock:close()
+            return nil, err
+        end
+    else if req_body_type == 'file' then
+        local buf = nil
+        while true do -- TODO chunked maybe better
+            buf = req_body:read(8192)
+            if not buf then break end
+            bytes, err = sock:send(buf)
+            if err then
+                sock:close()
+                return nil, err
+            end
+        end
+    else if req_body_type == 'function' then
+        err = req_body(sock) -- as callback(sock)
+        if err then
+            return err
+        end
     end
 
     -- receive status line
