@@ -198,7 +198,7 @@ local function receivebody(sock, headers, nreqt)
                 end
             end
         end
-    elseif headers["content-length"] ~= nil then
+    elseif headers["content-length"] ~= nil and headers["content-length"] ~= "0" then
         -- content length
         local length = tonumber(headers["content-length"])
         if length > nreqt.max_body_size then
