@@ -297,7 +297,7 @@ function request(self, reqt)
             sock:close()
             return nil, err
         end
-    else if req_body_type == 'file' then
+    elseif req_body_type == 'file' then
         local buf = nil
         while true do -- TODO chunked maybe better
             buf = req_body:read(8192)
@@ -308,7 +308,7 @@ function request(self, reqt)
                 return nil, err
             end
         end
-    else if req_body_type == 'function' then
+    elseif req_body_type == 'function' then
         err = req_body(sock) -- as callback(sock)
         if err then
             return err
