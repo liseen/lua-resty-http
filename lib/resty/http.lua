@@ -177,6 +177,7 @@ local function receivebody(sock, headers, nreqt)
             if chunked_header then return end
             body = body .. data
         end
+        callback = bc
     end
     if t and t ~= "identity" then
         -- chunked
