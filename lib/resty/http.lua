@@ -274,7 +274,7 @@ function request(self, reqt)
     
     -- send request line and headers
     local reqline = string.format("%s %s HTTP/1.1\r\n", nreqt.method or "GET", nreqt.uri)
-    local h = "\r\n"
+    local h = ""
     for i, v in pairs(nreqt.headers) do
         -- fix cookie is a table value
         if type(v) == "table" and i == "cookie" then
