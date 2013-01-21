@@ -25,6 +25,7 @@ local url = require("resty.url")
 local mt = { __index = resty.http }
 
 local tcp = ngx.socket.tcp
+local base64 = ngx.encode_base64
 
 
 local function adjusturi(reqt)
@@ -53,7 +54,7 @@ local function adjustheaders(reqt)
     -- if we have authentication information, pass it along
     if reqt.user and reqt.password then
         lower["authorization"] =
-            "Basic " ..  (mime.b64(reqt.user .. ":" .. reqt.password))
+            "Basic " ..  (base64(reqt.user .. ":" .. reqt.password))
     end
     -- override with user headers
     for i,v in pairs(reqt.headers or lower) do
