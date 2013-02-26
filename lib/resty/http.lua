@@ -358,6 +358,9 @@ function request(self, reqt)
         body, err = receivebody(sock, headers, nreqt)
         if err then
             sock:close()
+            if code == 200 then
+                return 1, code, headers, status, nil
+            end
             return nil, "read body failed " .. err
         end
     end
