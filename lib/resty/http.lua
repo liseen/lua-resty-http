@@ -278,8 +278,12 @@ function request(self, reqt)
     local h = ""
     for i, v in pairs(nreqt.headers) do
         -- fix cookie is a table value
-        if type(v) == "table" and i == "cookie" then
-            v = table.concat(v, "; ")
+        if type(v) == "table" then
+    		if i == "cookie" then
+				v = table.concat(v, "; ")
+			else
+				v = table.concat(v, ", ")
+			end
         end
         h = i .. ": " .. v .. "\r\n" .. h
     end
