@@ -57,12 +57,10 @@ TODO
 * implement the chunked
 * implement the keepalive
 
-Author
-======
+Authors
+=======
 
 "liseen" <liseen.wan@gmail.com>
-
-Zhang "agentzh" Yichun (章亦春) <agentzh@gmail.com>
 
 "wendal" <wendal1985@gmail.com>
 
