@@ -139,7 +139,12 @@ local function receiveheaders(sock, headers)
             if err then return nil, err end
         end
         -- save pair in table
-        if headers[name] then headers[name] = headers[name] .. ", " .. value
+        if headers[name] then 
+	    if name == "set-cookie" then
+	        headers[name] = headers[name] .. "\r" .. value
+	    else
+	        headers[name] = headers[name] .. ", " .. value
+	    end
         else headers[name] = value end
     end
     return headers
@@ -278,8 +283,12 @@ function request(self, reqt)
     local h = ""
     for i, v in pairs(nreqt.headers) do
         -- fix cookie is a table value
-        if type(v) == "table" and i == "cookie" then
-            v = table.concat(v, "; ")
+        if type(v) == "table" then
+    		if i == "cookie" then
+				v = table.concat(v, "; ")
+			else
+				v = table.concat(v, ", ")
+			end
         end
         h = i .. ": " .. v .. "\r\n" .. h
     end
