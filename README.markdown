@@ -39,7 +39,7 @@ Synopsis
                     --- timeout = 3000,
                     method = "POST", -- POST or GET
                     -- add post content-type and cookie
-                    headers = { Cookie = "ABCDEFG", ["Content-Type"] = "application/x-www-form-urlencoded" },
+                    headers = { Cookie = {"ABCDEFG"}, ["Content-Type"] = "application/x-www-form-urlencoded" },
                     body = "uid=1234567890",
                 }
 

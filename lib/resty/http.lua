@@ -274,7 +274,7 @@ function request(self, reqt)
     if req_body then
         req_body_type = type(req_body)
         if req_body_type == 'string' then -- fixed Content-Length
-            nreqt.headers['Content-Length'] = #req_body
+            nreqt.headers['content-length'] = #req_body
         end
     end
     
