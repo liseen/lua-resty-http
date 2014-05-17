@@ -249,6 +249,41 @@ function new(self)
     return setmetatable({}, mt)
 end
 
+local resolver = require "resty.dns.resolver"
+local function resolve(host)
+    local r, err = resolver:new{
+        nameservers = {"8.8.8.8", {"8.8.4.4", 53} },
+        retrans = 5,  -- 5 retransmissions on receive timeout
+        timeout = 2000,  -- 2 sec
+    }
+
+    if not r then
+        ngx.say("failed to instantiate the resolver: ", err)
+        return
+    end
+
+    local answers, err = r:query(host)
+    if not answers then
+        ngx.say("failed to query the DNS server: ", err)
+        return
+    end
+
+    if answers.errcode then
+        ngx.say("server returned error code: ", answers.errcode,
+                ": ", answers.errstr)
+    end
+
+    for i, ans in ipairs(answers) do
+        --ngx.say(ans.name, " ", ans.address or ans.cname,
+        --        " type:", ans.type, " class:", ans.class,
+        --        " ttl:", ans.ttl)
+        if ans.address then
+            return ans.address
+        end
+    end
+
+    return nil
+end
 
 function request(self, reqt)
     local code, headers, status, body, bytes, ok, err
@@ -262,8 +297,9 @@ function request(self, reqt)
 
     sock:settimeout(nreqt.timeout)
 
+    local address=resolve(nreqt.host)
     -- connect
-    ok, err = sock:connect(nreqt.host, nreqt.port)
+    ok, err = sock:connect(address, nreqt.port)
     if err then
         return nil, "sock connected failed " .. err
     end
