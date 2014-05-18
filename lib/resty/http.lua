@@ -141,7 +141,7 @@ local function receiveheaders(sock, headers)
         -- save pair in table
         if headers[name] then 
 	    if name == "set-cookie" then
-	        headers[name] = headers[name] .. "\r" .. value
+	        headers[name] = headers[name] .. "," .. value
 	    else
 	        headers[name] = headers[name] .. ", " .. value
 	    end
