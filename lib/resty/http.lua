@@ -297,7 +297,15 @@ function request(self, reqt)
 
     sock:settimeout(nreqt.timeout)
 
-    local address=resolve(nreqt.host)
+    -- determine nreqt.host is a domain name or a ip address
+    local is_ip=string.match(nreqt.host,"%d+%.%d+%.%d+%.%d+")
+    local address=nil
+    if is_ip then
+        address=nreqt.host
+    else
+        address=resolve(nreqt.host)
+    end
+    
     -- connect
     ok, err = sock:connect(address, nreqt.port)
     if err then
