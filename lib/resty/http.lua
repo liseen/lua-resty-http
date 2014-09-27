@@ -293,7 +293,15 @@ function request(self, reqt)
     end
     
     h = h .. '\r\n' -- close headers
-    
+   
+	-- @modify: add ssl support
+	if nreqt.protocol == 'https:' then
+		local sess, err = sock:sslhandshake();
+		if err then
+			return nil, err;
+		end
+	end
+ 
     bytes, err = sock:send(reqline .. h)
     if err then
         sock:close()

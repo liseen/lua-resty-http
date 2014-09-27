@@ -37,6 +37,7 @@ Synopsis
                     url = "http://www.qunar.com/",
                     --- proxy = "http://127.0.0.1:8888",
                     --- timeout = 3000,
+					--- protocol = 'https:',
                     method = "POST", -- POST or GET
                     -- add post content-type and cookie
                     headers = { Cookie = {"ABCDEFG"}, ["Content-Type"] = "application/x-www-form-urlencoded" },
