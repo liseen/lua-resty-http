@@ -5,8 +5,10 @@ _VERSION = '0.2'
 -- constants
 -- connection timeout in seconds
 local TIMEOUT = 60
--- default port for document retrieval
+-- default ports for document retrieval
 local PORT = 80
+local SSL_PORT = 443
+
 -- user agent field sent in request
 local USERAGENT = 'resty.http/' .. _VERSION
 
@@ -81,7 +83,13 @@ local function adjustrequest(reqt)
     -- explicit components override url
     for i,v in pairs(reqt) do nreqt[i] = v end
 
-    if nreqt.port == "" then nreqt.port = 80 end
+    if nreqt.port == nil or nreqt.port == "" then
+        if nreqt.scheme == "https" then
+            nreqt.port = SSL_PORT
+        else
+            nreqt.port = PORT
+        end
+    end
 
     -- compute uri if user hasn't overriden
     nreqt.uri = reqt.uri or adjusturi(nreqt)
@@ -94,7 +102,7 @@ local function adjustrequest(reqt)
 
     nreqt.fetch_size = reqt.fetch_size or 16*1024 -- 16k
     nreqt.max_body_size = reqt.max_body_size or 1024*1024*1024 -- 1024mb
-    
+
     if reqt.keepalive then
         nreqt.headers['connection'] = 'keep-alive'
     end
@@ -139,7 +147,7 @@ local function receiveheaders(sock, headers)
             if err then return nil, err end
         end
         -- save pair in table
-        if headers[name] then 
+        if headers[name] then
 	    if name == "set-cookie" then
 	        headers[name] = headers[name] .. "," .. value
 	    else
@@ -276,7 +284,7 @@ function request(self, reqt)
             nreqt.headers['content-length'] = #req_body
         end
     end
-    
+
     -- send request line and headers
     local reqline = string.format("%s %s HTTP/1.1\r\n", nreqt.method or "GET", nreqt.uri)
     local h = ""
@@ -291,9 +299,9 @@ function request(self, reqt)
         end
         h = i .. ": " .. v .. "\r\n" .. h
     end
-    
+
     h = h .. '\r\n' -- close headers
-   
+
 	-- @modify: add ssl support
 	if nreqt.scheme == 'https' then
 		local sess, err = sock:sslhandshake();
@@ -301,13 +309,13 @@ function request(self, reqt)
 			return nil, err;
 		end
 	end
- 
+
     bytes, err = sock:send(reqline .. h)
     if err then
         sock:close()
         return nil, err
     end
-    
+
     -- send req_body, if exists
     if req_body_type == 'string' then
         bytes, err = sock:send(req_body)
@@ -380,10 +388,10 @@ function request(self, reqt)
             return nil, "read body failed " .. err
         end
     end
-    
+
     if nreqt.keepalive then
         sock:setkeepalive(nreqt.keepalive)
-    else 
+    else
         sock:close()
     end
 
