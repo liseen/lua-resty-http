@@ -198,7 +198,9 @@ local function receivebody(sock, headers, nreqt)
         while true do
             local chunk_header = sock:receiveuntil("\r\n")
             local data, err, partial = chunk_header()
-            if not err then
+            if not data then
+                return nil,err
+            else
                 if data == "0" then
                     return body -- end of chunk
                 else
