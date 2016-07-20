@@ -395,6 +395,7 @@ function request(self, reqt)
     repeat
         local ok, err = sock:receive()
     until  ok ~= nil
+    
     if nreqt.keepalive then
         local ok, err = sock:setkeepalive(nreqt.keepalive)
         if not ok then
