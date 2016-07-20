@@ -391,8 +391,15 @@ function request(self, reqt)
         end
     end
 
+     -- read CR/LF or LF otherwise thorw 'unread data in buffer' error
+    repeat
+        local ok, err = sock:receive()
+    until  ok ~= nil
     if nreqt.keepalive then
-        sock:setkeepalive(nreqt.keepalive)
+        local ok, err = sock:setkeepalive(nreqt.keepalive)
+        if not ok then
+            ngx.log(ngx.WARN, "failed to set keepalive: " .. err)
+        end
     else
         sock:close()
     end
