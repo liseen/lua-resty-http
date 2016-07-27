@@ -392,10 +392,7 @@ function request(self, reqt)
     end
 
      -- read CR/LF or LF otherwise thorw 'unread data in buffer' error
-    repeat
-        local ok, err = sock:receive()
-    until  ok ~= nil
-    
+    sock:receive("*l")
     if nreqt.keepalive then
         local ok, err = sock:setkeepalive(nreqt.keepalive)
         if not ok then
