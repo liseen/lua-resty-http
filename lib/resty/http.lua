@@ -184,12 +184,12 @@ end
 
 local function receivebody(sock, headers, nreqt)
     local t = headers["transfer-encoding"] -- shortcut
-    local body = ''
+    local body = {} -- data chunks of response body
     local callback = nreqt.body_callback
     if not callback then
         local function bc(data, chunked_header, ...)
             if chunked_header then return end
-            body = body .. data
+            body[#body+1] = data
         end
         callback = bc
     end
@@ -202,7 +202,7 @@ local function receivebody(sock, headers, nreqt)
                 return nil,err
             else
                 if data == "0" then
-                    return body -- end of chunk
+                    return table.concat(body) -- end of chunk
                 else
                     local length = tonumber(data, 16)
 
@@ -234,7 +234,7 @@ local function receivebody(sock, headers, nreqt)
             return nil,err
         end
     end
-    return body
+    return table.concat(body)
 end
 
 local function shouldredirect(reqt, code, headers)
