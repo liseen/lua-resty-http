@@ -15,7 +15,6 @@ local USERAGENT = 'resty.http/' .. _VERSION
 -- default url parts
 local default = {
     host = "",
-    port = PORT,
     path ="/",
     scheme = "http"
 }
